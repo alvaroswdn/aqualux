@@ -1,0 +1,10 @@
+#define SERVO_PIN 3
+#define LED_PIN 4
+#define RTC_CLK_PIN 6
+#define RTC_DAT_PIN 7
+#define RTC_RST_PIN 8
+#define BUTTON_PIN 9
+#define TEMP_PIN 10
+#define LDR_PIN A0
+#define POTENTIO_PIN A1
+#define TDS_PIN A2

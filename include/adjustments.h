@@ -1,0 +1,9 @@
+#define VOLT 5.0
+#define AN_DC 1024.0
+#define CAL_FAC 0.5
+#define LIGHT_BASE 700
+#define SERVO_ANGLE 150
+#define SERVO_DELAY 200
+#define SERVO_REPEAT 5
+#define POTENTIO_MIN 60
+#define POTENTIO_MAX 1008
