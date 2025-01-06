@@ -5,5 +5,6 @@
 #define SERVO_ANGLE 150
 #define SERVO_DELAY 200
 #define SERVO_REPEAT 5
-#define POTENTIO_MIN 60
-#define POTENTIO_MAX 1008
+#define POTENTIO_MIN 10
+#define POTENTIO_MAX 1010
+#define FILE_NAME "data.log"

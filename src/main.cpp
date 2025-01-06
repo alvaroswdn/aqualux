@@ -5,6 +5,7 @@
 #include <Servo.h>
 #include <virtuabotixRTC.h>
 #include <Time.h>
+#include <SD.h>
 
 #include <build_time.h>
 #include <pins.h>
@@ -17,7 +18,7 @@ virtuabotixRTC myRTC(RTC_CLK_PIN, RTC_DAT_PIN, RTC_RST_PIN);
 Servo servo;
 
 // Sensor reading data values
-int ldrValue, tempValue, tdsValue, potentioValue = 0;
+int ldrValue, tempValue, tdsValue, potentioValue;
 bool buttonPressed = false;
 Time feedingTime(0, 0);
 
@@ -26,6 +27,8 @@ uint8_t menuPage = 1;
 
 // Last time the LCD was updated
 unsigned long lastUpdate = -1;
+
+File dataFile;
 
 // Define utility functions
 int readPotentio(int max);
@@ -41,8 +44,6 @@ void setup() {
   Serial.begin(9600);
 
   //Initialize input and output devices
-  pinMode(TEMP_PIN, INPUT);
-  pinMode(LDR_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
 
@@ -54,8 +55,18 @@ void setup() {
   lcd.init();
   lcd.backlight();
 
+  if (!SD.begin(SD_CHIP_SELECT_PIN)) {
+    lcd.setCursor(0, 1);
+    lcd.print("Can't load SD card");
+    lcd.setCursor(0, 2);
+    lcd.print("Insert SD card..."); 
+    while (true);
+  }
+
+  dataFile = SD.open(FILE_NAME, FILE_WRITE);
+
   myRTC.setDS1302Time(
-    BUILD_SEC, BUILD_MIN, BUILD_HOUR, 
+    BUILD_SEC + 9, BUILD_MIN, BUILD_HOUR, 
     0, BUILD_DAY, BUILD_MONTH, BUILD_YEAR
   );
 }
@@ -74,37 +85,28 @@ void loop() {
     lastUpdate = millis();
   } else if (menuPage == 2) {
     if (potentioValue != readPotentio(23)) {
-      feedingTime.updateHour(readPotentio(23));
+      potentioValue = readPotentio(23);
+      feedingTime.updateHour(potentioValue);
     }
 
     lcd.setCursor(0, 1);
     lcd.print("Set Hour");
-    if (millis() - lastUpdate >= 1000) {
-      lcd.setCursor(0, 2);
-      feedingTime.print(lcd);
-      lastUpdate = millis();
-    } else {
-      lcd.setCursor(0, 2);
-      lcd.print("  ");
-    }
+    lcd.setCursor(0, 2);
+    feedingTime.print(lcd);
   } else if (menuPage == 3) {
     if (potentioValue != readPotentio(59)) {
-      feedingTime.updateMinute(readPotentio(59));
+      potentioValue = readPotentio(59);
+      feedingTime.updateMinute(potentioValue);
     }
 
     lcd.setCursor(0, 1);
     lcd.print("Set Minute");
-    if (millis() - lastUpdate >= 1000) {
-      lcd.setCursor(0, 2);
-      feedingTime.print(lcd);
-      lastUpdate = millis();
-    } else {
-      lcd.setCursor(3, 2);
-      lcd.print("  ");
-    }
+    lcd.setCursor(0, 2);
+    feedingTime.print(lcd);
   }
 
   handleFeeding();
+  dataFile.flush();
 }
 
 int readPotentio(int max) {
@@ -118,7 +120,7 @@ int readPotentio(int max) {
 int readTDS() {
   int analogValue = analogRead(TDS_PIN);
   float voltage = (analogValue / AN_DC) * VOLT;
-  return (voltage * CAL_FAC) * 1000; 
+  return (voltage * CAL_FAC) * 1000;
 }
 
 int readTemp() {
@@ -150,6 +152,19 @@ void printData() {
   lcd.print("Feeding at ");
   feedingTime.print(lcd);
   lcd.print("    ");
+
+  myRTC.updateTime();
+  dataFile.print("[");
+  dataFile.print(myRTC.hours);
+  dataFile.print(":");
+  dataFile.print(myRTC.minutes);
+  dataFile.print(":");
+  dataFile.print(myRTC.seconds);
+  dataFile.print("] Temperature=");
+  dataFile.print(tempValue);
+  dataFile.print(" Murkiness=");
+  dataFile.print(tdsValue);
+  dataFile.println();
 }
 
 void handleButtonPress() {
@@ -166,7 +181,7 @@ void handleButtonPress() {
 }
 
 void handleLight() {
-  if (ldrValue > LIGHT_BASE) {
+  if (ldrValue < LIGHT_BASE) {
     digitalWrite(LED_PIN, LOW);
   } else {
     digitalWrite(LED_PIN, HIGH);
